@@ -1,5 +1,6 @@
 export type Language = 'fr' | 'ar';
 const messages: Record<string, string> = {
+  'الخدمة تتفعّل بعد ربط الخادم. بياناتك مازالت هنا.': 'L’envoi sera disponible après la connexion du serveur. Vos informations sont conservées ici.',
   'تونس': "Tunisie",
   'كاستينغ': "Casting",
   'ترشّح معانا': "Postuler",
