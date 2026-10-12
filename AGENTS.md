@@ -15,3 +15,5 @@
 - Store applications and photos privately through the write-only server intake; no anonymous read policies, so personal data stays out of public pages.
 - Compress photos to JPEG in the browser before submission to reduce transfer size and strip image metadata.
 - Keep brand styling in global semantic CSS tokens and button variants so visual changes stay consistent.
+
+- Keep casting translations in a browser-safe localization module and switch presentation labels without changing validated submission values, so languages remain compatible with the existing intake.
