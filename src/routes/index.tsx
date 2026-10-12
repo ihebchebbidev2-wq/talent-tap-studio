@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { ArrowDown, ArrowUpRight, MapPin, Globe2 } from 'lucide-react';
+import { ArrowDown, ArrowUpRight, MapPin } from 'lucide-react';
 import logo from '@/assets/mega-creative-logo.png.asset.json';
 import studio from '@/assets/casting-studio.jpg';
 import frenchFlag from '@/assets/flags/fr.png';
@@ -11,17 +11,17 @@ import { Button } from '@/components/ui/button';
 
 export const Route = createFileRoute('/')({
   head: () => ({ meta: [
-    { title: 'MEGA CREATIVE — Casting Tunisia | Apply now' },
-    { name: 'description', content: 'Apply for advertising, content creation and UGC projects with MEGA CREATIVE in Tunisia. Share your profile in English, French or Arabic.' },
-    { property: 'og:title', content: 'MEGA CREATIVE — Casting Tunisia' },
-    { property: 'og:description', content: 'New faces. Real stories. Apply for creative projects in Tunisia in English, French or Arabic.' },
+    { title: 'MEGA CREATIVE — Casting Tunisie | Postuler' },
+    { name: 'description', content: 'Rejoignez les projets publicitaires et de création de contenu de MEGA CREATIVE en Tunisie. Présentez votre profil en français ou en arabe.' },
+    { property: 'og:title', content: 'MEGA CREATIVE — Casting Tunisie' },
+    { property: 'og:description', content: 'Nouveaux visages, histoires authentiques. Postulez aux projets créatifs en Tunisie, en français ou en arabe.' },
     { property: 'og:type', content: 'website' },
     { name: 'twitter:card', content: 'summary_large_image' },
   ] }),
   component: Index,
 });
 function Index() {
-  const [language, setLanguage] = useState<Language>('en');
+  const [language, setLanguage] = useState<Language>('fr');
   const t = (key: string) => translate(language, key);
   const direction = language === 'ar' ? 'rtl' : 'ltr';
   useEffect(() => {
@@ -32,9 +32,9 @@ function Index() {
     <header className="site-header" dir="ltr">
       <a href="/" aria-label="MEGA CREATIVE"><img className="brand-logo" src={logo.url} alt="MEGA CREATIVE" width={500} height={500} /></a>
       <span className="header-location"><MapPin /> {t('تونس')} <span>/</span> {t('كاستينغ')}</span>
-      <nav className="language-switcher" aria-label="Language">
-        {(['en', 'fr', 'ar'] as const).map(lang => <Button key={lang} type="button" variant="ghost" className="language-button" aria-label={lang === 'en' ? 'English' : lang === 'fr' ? 'Français' : 'العربية'} title={lang === 'en' ? 'English' : lang === 'fr' ? 'Français' : 'العربية'} aria-pressed={language === lang} onClick={() => setLanguage(lang)}>
-          {lang === 'en' ? <Globe2 /> : <img src={lang === 'fr' ? frenchFlag : tunisianFlag} alt="" width={22} height={15} />}<span>{lang.toUpperCase()}</span>
+      <nav className="language-switcher" aria-label={language === 'fr' ? 'Langue' : 'اللغة'}>
+        {(['fr', 'ar'] as const).map(lang => <Button key={lang} type="button" variant="ghost" className="language-button" aria-label={lang === 'fr' ? 'Français' : 'العربية'} title={lang === 'fr' ? 'Français' : 'العربية'} aria-pressed={language === lang} onClick={() => setLanguage(lang)}>
+          <img src={lang === 'fr' ? frenchFlag : tunisianFlag} alt="" width={22} height={15} /><span>{lang === 'fr' ? 'Français' : 'العربية'}</span>
         </Button>)}
       </nav>
     </header>
