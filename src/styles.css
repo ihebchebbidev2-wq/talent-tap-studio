@@ -114,7 +114,7 @@ a { text-decoration: none; }
 button, input, textarea { font: inherit; }
 button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
 .site-header { max-width: 1200px; height: 110px; margin: auto; padding: 0 40px; display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); align-items: center; }
-.brand-logo { width: 105px; height: 95px; object-fit: contain; }
+.brand-logo { width: 105px; height: 95px; object-fit: contain; background: var(--foreground); border-radius: 5px; }
 .site-header > a { width: fit-content; }
 .site-header > button, .site-header > a:last-child { justify-self: end; }
 .header-location { display: flex; align-items: center; gap: 12px; font: 500 12px var(--font-latin); color: var(--muted-foreground); }
@@ -126,7 +126,7 @@ button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
 .hero-copy { position: relative; width: min(1120px, calc(100% - 80px)); margin: auto; padding-top: 62px; }
 .casting-tag { display: inline-flex; align-items: center; gap: 8px; color: var(--brand-bright); font-size: 13px; margin-bottom: 20px; }
 .casting-tag > span { width: 6px; height: 6px; background: var(--brand-bright); border-radius: 50%; }
-.hero-brand { display: block; font: 600 12px var(--font-latin); color: var(--muted-foreground); margin-bottom: 15px; }
+.hero-brand { display: block; text-align: right; font: 600 12px var(--font-latin); color: var(--muted-foreground); margin-bottom: 15px; }
 .hero-copy h1 { font-size: 64px; line-height: 1.25; font-weight: 700; margin: 0 0 20px; }
 .hero-copy h1 > span { color: var(--brand-bright); }
 .hero-copy p { color: var(--foreground); opacity: .75; font-size: 15px; line-height: 1.95; margin-bottom: 27px; }
