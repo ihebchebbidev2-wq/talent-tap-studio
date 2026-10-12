@@ -177,8 +177,8 @@ button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
 .form-field > label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 10px; }
 .required { color: var(--brand-bright); margin-inline: 3px; }
 .optional { color: var(--muted-foreground); font-size: 10px; font-weight: 400; margin-inline-start: 6px; }
-.form-field input:not([type=checkbox]), .form-field textarea { width: 100%; min-width: 0; border: 1px solid var(--border); background: var(--card); color: var(--foreground); border-radius: 5px; padding: 13px 15px; font-size: 14px; outline: none; transition: border-color .2s; }
-.form-field input:not([type=checkbox]) { height: 47px; }
+.form-field input:not([type=checkbox]):not([type=file]), .form-field textarea { width: 100%; min-width: 0; border: 1px solid var(--border); background: var(--card); color: var(--foreground); border-radius: 5px; padding: 13px 15px; font-size: 14px; outline: none; transition: border-color .2s; }
+.form-field input:not([type=checkbox]):not([type=file]) { height: 47px; }
 .form-field input:focus, .form-field textarea:focus { border-color: var(--primary); }
 .form-field input::placeholder, .form-field textarea::placeholder { color: var(--muted-foreground); opacity: .7; }
 .choice-row { display: flex; gap: 10px; }
