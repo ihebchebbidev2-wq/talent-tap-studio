@@ -14,7 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      casting_applications: {
+        Row: {
+          age_group: string
+          city: string
+          consent: boolean
+          created_at: string
+          experience: boolean | null
+          full_name: string
+          gender: string
+          id: string
+          interests: string[]
+          notes: string
+          phone: string
+          photo_paths: string[]
+          social_url: string
+          status: string
+          video_url: string
+        }
+        Insert: {
+          age_group: string
+          city: string
+          consent: boolean
+          created_at?: string
+          experience?: boolean | null
+          full_name: string
+          gender: string
+          id?: string
+          interests?: string[]
+          notes?: string
+          phone: string
+          photo_paths: string[]
+          social_url?: string
+          status?: string
+          video_url?: string
+        }
+        Update: {
+          age_group?: string
+          city?: string
+          consent?: boolean
+          created_at?: string
+          experience?: boolean | null
+          full_name?: string
+          gender?: string
+          id?: string
+          interests?: string[]
+          notes?: string
+          phone?: string
+          photo_paths?: string[]
+          social_url?: string
+          status?: string
+          video_url?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
