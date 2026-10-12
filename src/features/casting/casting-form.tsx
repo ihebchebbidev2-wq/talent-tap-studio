@@ -1,16 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { useServerFn } from '@tanstack/react-start';
 import { ArrowLeft, UserRound, Clapperboard, Images, ShieldCheck, Check, LoaderCircle, CircleCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { applicationSchema, ages, interestOptions } from './schema';
-import { submitApplication } from './submit.functions';
+import { submitApplication, backendUrl } from './api';
 import { PhotoUpload, type CastingPhoto } from './photo-upload';
 import { translate, type Language } from './localization';
 
 export function CastingForm({ language }: { language: Language }) {
   const t = (key: string) => translate(language, key);
   const direction = language === 'ar' ? 'rtl' : 'ltr';
-  const submit = useServerFn(submitApplication);
   const [values, setValues] = useState({ full_name: '', phone: '', city: '', social_url: '', video_url: '', notes: '', age_group: '', gender: '', experience: null as boolean | null, interests: [] as string[], consent: false });
   const [photos, setPhotos] = useState<CastingPhoto[]>([]);
   const photoRef = useRef(photos);
@@ -28,7 +26,7 @@ export function CastingForm({ language }: { language: Language }) {
     if (!parsed.success) parsed.error.issues.forEach(issue => { next[String(issue.path[0])] = (/[\u0600-\u06ff]/.test(issue.message) ? issue.message : 'تأكّد من هذا الحقل'); });
     if (photos.length < 2) next['photos'] = 'حمّل صورتين على الأقل باش نكمّلوا الترشّح';
     setErrors(next);
-    if (Object.keys(next).length) { requestAnimationFrame(() => document.querySelector('[aria-invalid="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })); return; }
+    if (Object.keys(next).length) { requestAnimationFrame(() => { const invalid = document.querySelector<HTMLElement>('[aria-invalid="true"]'); invalid?.scrollIntoView({ behavior: 'smooth', block: 'center' }); (invalid?.matches('input') ? invalid : invalid?.querySelector<HTMLElement>('button, input'))?.focus({ preventScroll: true }); }); return; }
     if (!parsed.success) return;
     setSending(true);
     try {
@@ -38,10 +36,10 @@ export function CastingForm({ language }: { language: Language }) {
         for (const byte of bytes) binary += String.fromCharCode(byte);
         return { base64: btoa(binary), type: 'image/jpeg' as const };
       }));
-      const result = await submit({ data: { ...parsed.data, photos: encoded } });
+      const result = await submitApplication({ ...parsed.data, photos: encoded });
       setReference(result.reference);
       document.getElementById('application')?.scrollIntoView({ behavior: 'smooth' });
-    } catch { setErrors({ submit: 'ما نجّمش نبعثوا الترشّح توّا. بياناتك مازالت هنا، عاود جرّب.' }); }
+    } catch { setErrors({ submit: backendUrl ? 'ما نجّمش نبعثوا الترشّح توّا. بياناتك مازالت هنا، عاود جرّب.' : 'الخدمة تتفعّل بعد ربط الخادم. بياناتك مازالت هنا.' }); }
     finally { setSending(false); }
   }
   const field = (name: 'full_name' | 'phone' | 'city' | 'social_url' | 'video_url', label: string, placeholder: string, required = false) => <div className="form-field">

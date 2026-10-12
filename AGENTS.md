@@ -10,10 +10,12 @@
 <!-- LOVABLE:END -->
 
 ## Application architecture
-- Keep casting validation, photo preparation, presentation, and server submission in `src/features/casting` so public pages stay separate from intake logic.
+- Keep casting validation and photo presentation in `src/features/casting`; the standalone `backend` imports the same schema so client and Node intake accept identical fields.
 - Validate casting fields with the shared Zod schema on both client and server to keep accepted submissions consistent.
 - Store applications and photos privately through the write-only server intake; no anonymous read policies, so personal data stays out of public pages.
 - Compress photos to JPEG in the browser before submission to reduce transfer size and strip image metadata.
 - Keep brand styling in global semantic CSS tokens and button variants so visual changes stay consistent.
 
 - Keep casting translations in a browser-safe localization module and switch presentation labels without changing validated submission values, so languages remain compatible with the existing intake.
+- Deploy `backend` separately as Node.js with PostgreSQL; frontend REST calls use `VITE_BACKEND_URL` and never fall back to Cloud intake, so deployment boundaries stay explicit.
+- Verify admin credentials only in Node.js using a password hash and PostgreSQL-backed opaque HttpOnly sessions; every admin API and photo request must authenticate independently of page navigation.
