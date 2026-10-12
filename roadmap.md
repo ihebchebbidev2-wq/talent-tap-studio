@@ -5,3 +5,5 @@
 - [x] Refine the page into a professional white design.
 - [x] Translate the complete experience into English (default), French and Arabic with local flag assets.
 - [x] Verify language switching, preserved form values, uploads and layouts.
+- [x] Remove English and make French the default with Arabic as the only alternative.
+- [x] Refine navigation, typography, form readability and focus states; verify both languages.
