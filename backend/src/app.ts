@@ -76,7 +76,7 @@ export function createApp() {
   });
   app.use('/api/admin', requireAdmin);
   app.get('/api/admin/stats', async (_req, res) => {
-    const result = await pool.query("SELECT count(*)::int total, count(*) FILTER(WHERE status='new')::int new, count(*) FILTER(WHERE status='shortlisted')::int shortlisted, count(*) FILTER(WHERE created_at>=date_trunc('month',now()))::int month FROM applications");
+    const result = await pool.query("SELECT count(*)::int total, count(*) FILTER(WHERE status='new')::int new, count(*) FILTER(WHERE status='shortlisted')::int shortlisted, count(*) FILTER(WHERE created_at>=date_trunc('month',now()))::int AS "month" FROM applications");
     res.json(result.rows[0]);
   });
   app.get('/api/admin/applications', async (req, res) => {
