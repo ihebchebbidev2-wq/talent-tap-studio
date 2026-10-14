@@ -28,11 +28,21 @@ test('private intake and complete admin lifecycle', async () => {
   const submitted = await request('/applications', 'POST', body, false);
   assert.equal(submitted.status, 201);
   const { reference } = await submitted.json() as { reference: string };
-  const list = await (await request(`/admin/applications?q=${reference}`)).json() as { items: { id: string }[]; total: number };
+  const list = await (await request(`/admin/applications?q=${reference}`)).json() as { items: { id: string; photo_id: string }[]; total: number };
   assert.equal(list.total, 1); id = list.items[0]?.id ?? ''; assert.ok(id);
   const detail = await (await request(`/admin/applications/${id}`)).json() as { full_name: string; notes: string; photos: { id: string }[] };
   assert.equal(detail.full_name, body.full_name); assert.equal(detail.notes, body.notes); assert.equal(detail.photos.length, 2);
   const photoId = detail.photos[0]?.id;
+  assert.equal(list.items[0]?.photo_id, photoId);
+  const matching = await (await request(`/admin/applications?${new URLSearchParams({ q: reference, age: '25-34', gender: 'female', city: 'tUn', experience: 'true', status: 'new' })}`)).json() as { total: number };
+  assert.equal(matching.total, 1);
+  for (const filter of ['age=50%2B', 'gender=male', 'city=Sfax', 'experience=false', 'status=rejected', 'page=2']) {
+    const filtered = await (await request(`/admin/applications?q=${reference}&${filter}`)).json() as { items: unknown[]; total: number };
+    assert.equal(filtered.items.length, 0);
+    assert.equal(filtered.total, filter === 'page=2' ? 1 : 0);
+  }
+  for (const filter of ['age=17', 'gender=other', 'experience=yes', 'page=0']) assert.equal((await request(`/admin/applications?${filter}`)).status, 400);
+  assert.equal((await request('/admin/applications?age=25-34', 'GET', undefined, false)).status, 401);
   assert.equal((await request(`/admin/photos/${photoId}`, 'GET', undefined, false)).status, 401);
   assert.equal((await request(`/admin/photos/${photoId}`)).headers.get('content-type'), 'image/jpeg');
   assert.equal((await request(`/admin/applications/${id}`, 'PATCH', { status: 'shortlisted' })).status, 200);
