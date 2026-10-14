@@ -19,3 +19,4 @@
 - Keep casting translations in a browser-safe localization module and switch presentation labels without changing validated submission values, so languages remain compatible with the existing intake.
 - Deploy `backend` separately as Node.js with PostgreSQL; frontend REST calls use `VITE_BACKEND_URL` and never fall back to Cloud intake, so deployment boundaries stay explicit.
 - Verify admin credentials only in Node.js using a password hash and PostgreSQL-backed opaque HttpOnly sessions; every admin API and photo request must authenticate independently of page navigation.
+- Filter and paginate admin submissions in PostgreSQL and return only a protected first-photo identifier with each summary, so cards stay lightweight and private.

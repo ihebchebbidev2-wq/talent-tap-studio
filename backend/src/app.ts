@@ -5,7 +5,7 @@ import { rateLimit } from 'express-rate-limit';
 import { randomBytes, randomUUID } from 'node:crypto';
 import sharp from 'sharp';
 import { z } from 'zod';
-import { submissionSchema } from '../../src/features/casting/schema';
+import { ages, submissionSchema } from '../../src/features/casting/schema';
 import { pool } from './db/pool';
 import { hashToken, requireAdmin, sessionToken, verifyPassword } from './security';
 
@@ -80,15 +80,24 @@ export function createApp() {
     res.json(result.rows[0]);
   });
   app.get('/api/admin/applications', async (req, res) => {
-    const parsed = z.object({ q: z.string().max(100).default(''), status: z.enum(['','new','reviewing','shortlisted','rejected']).default(''), page: z.coerce.number().int().min(1).max(100000).default(1) }).safeParse(req.query);
+    const parsed = z.object({
+      q: z.string().trim().max(100).default(''),
+      status: z.enum(['','new','reviewing','shortlisted','rejected']).default(''),
+      age: z.enum(['', ...ages]).default(''),
+      gender: z.enum(['', 'male', 'female']).default(''),
+      city: z.string().trim().max(100).default(''),
+      experience: z.enum(['', 'true', 'false']).default(''),
+      page: z.coerce.number().int().min(1).max(100000).default(1),
+    }).safeParse(req.query);
     if (!parsed.success) { res.status(400).json({ error: 'Filtres invalides.' }); return; }
-    const { q, status, page } = parsed.data;
+    const { q, status, age, gender, city, experience, page } = parsed.data;
     const search = `%${q.replace(/[\\%_]/g, '\\$&')}%`;
-    const args = [search, status];
-    const where = "WHERE (full_name ILIKE $1 OR phone ILIKE $1 OR city ILIKE $1 OR reference ILIKE $1) AND ($2='' OR status=$2)";
+    const citySearch = `%${city.replace(/[\\%_]/g, '\\$&')}%`;
+    const args = [search, status, age, gender, citySearch, experience === '' ? null : experience === 'true'];
+    const where = "WHERE (a.full_name ILIKE $1 OR a.phone ILIKE $1 OR a.city ILIKE $1 OR a.reference ILIKE $1) AND ($2='' OR a.status=$2) AND ($3='' OR a.age_group=$3) AND ($4='' OR a.gender=$4) AND a.city ILIKE $5 AND ($6::boolean IS NULL OR a.experience=$6::boolean)";
     const [rows, count] = await Promise.all([
-      pool.query(`SELECT id,reference,full_name,phone,city,age_group,gender,status,created_at FROM applications ${where} ORDER BY created_at DESC LIMIT 20 OFFSET $3`, [...args, (page - 1) * 20]),
-      pool.query(`SELECT count(*)::int total FROM applications ${where}`, args),
+      pool.query(`SELECT a.id,a.reference,a.full_name,a.phone,a.city,a.age_group,a.gender,a.status,a.created_at, (SELECT p.id FROM application_photos p WHERE p.application_id=a.id ORDER BY p.position LIMIT 1) AS photo_id FROM applications a ${where} ORDER BY a.created_at DESC,a.id DESC LIMIT 20 OFFSET $7`, [...args, (page - 1) * 20]),
+      pool.query(`SELECT count(*)::int total FROM applications a ${where}`, args),
     ]);
     res.json({ items: rows.rows, total: count.rows[0].total, page });
   });

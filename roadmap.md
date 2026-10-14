@@ -7,7 +7,10 @@
 - [x] Verify language switching, preserved form values, uploads and layouts.
 - [x] Remove English and make French the default with Arabic as the only alternative.
 - [x] Refine navigation, typography, form readability and focus states; verify both languages.
-- [ ] Polish public form spacing, accessibility and phone/tablet layouts.
-- [ ] Create standalone Node.js/PostgreSQL backend with private intake, server-verified admin sessions, APIs and deployment instructions.
-- [ ] Add /admin login, KPIs, searchable submissions and full applicant detail pages.
-- [ ] Verify backend and admin flows; connect production after the external backend address is supplied.
+- [x] Polish public form spacing, accessibility and phone/tablet layouts.
+- [x] Create standalone Node.js/PostgreSQL backend with private intake, server-verified admin sessions, APIs and deployment instructions.
+- [x] Add /admin login, KPIs, searchable submissions and full applicant detail pages.
+- [x] Verify backend and admin flows against a local Node API and PostgreSQL database.
+- [ ] Connect production — blocked until the external backend deployment address is supplied.
+- [x] Replace the admin submission table with photo cards linking to full profiles.
+- [x] Add and verify combined age, gender, city, experience and status filters in the admin API and interface.
