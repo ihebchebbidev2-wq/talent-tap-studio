@@ -11,3 +11,5 @@
 - [ ] Create standalone Node.js/PostgreSQL backend with private intake, server-verified admin sessions, APIs and deployment instructions.
 - [ ] Add /admin login, KPIs, searchable submissions and full applicant detail pages.
 - [ ] Verify backend and admin flows; connect production after the external backend address is supplied.
+- [ ] Replace the admin submission table with photo cards linking to full profiles.
+- [ ] Add and verify combined age, gender, city, experience and status filters in the admin API and interface.
