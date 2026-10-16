@@ -15,6 +15,13 @@ if (!password) throw new Error('Set TEST_ADMIN_PASSWORD for integration tests.')
 let cookie = ''; let id = '';
 const request = (path: string, method = 'GET', data?: unknown, authenticated = true) => fetch(`${base}${path}`, { method, headers: { Origin: origin, 'Content-Type': 'application/json', ...(authenticated && cookie ? { Cookie: cookie } : {}) }, ...(data === undefined ? {} : { body: JSON.stringify(data) }) });
 after(async () => { if (id) await pool.query('DELETE FROM applications WHERE id=$1', [id]); if (cookie) await request('/auth/logout', 'POST'); await new Promise<void>(resolve => server.close(() => resolve())); await pool.end(); });
+test('accepts CORS requests from arbitrary frontend origins', async () => {
+  const preflight = await fetch(`${base}/auth/session`, { method: 'OPTIONS', headers: { Origin: 'https://www.megacreative.art', 'Access-Control-Request-Method': 'GET' } });
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('access-control-allow-origin'), 'https://www.megacreative.art');
+  assert.equal(preflight.headers.get('access-control-allow-credentials'), 'true');
+});
+
 test('private intake and complete admin lifecycle', async () => {
   assert.equal((await request('/admin/stats', 'GET', undefined, false)).status, 401);
   assert.equal((await request('/auth/login', 'POST', { username: 'Mega', password: 'incorrect-test-value' })).status, 401);
@@ -48,8 +55,8 @@ test('private intake and complete admin lifecycle', async () => {
   assert.equal((await request(`/admin/applications/${id}`, 'PATCH', { status: 'shortlisted' })).status, 200);
   const updated = await (await request(`/admin/applications/${id}`)).json() as { status: string };
   assert.equal(updated.status, 'shortlisted');
-  const blocked = await fetch(`${base}/admin/applications/${id}`, { method: 'PATCH', headers: { Origin: 'https://untrusted.invalid', Cookie: cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }) });
-  assert.equal(blocked.status, 403);
+  const crossOriginPatch = await fetch(`${base}/admin/applications/${id}`, { method: 'PATCH', headers: { Origin: 'https://www.megacreative.art', Cookie: cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }) });
+  assert.equal(crossOriginPatch.status, 200);
   assert.equal((await request('/auth/logout', 'POST')).status, 200);
   assert.equal((await request('/admin/stats')).status, 401);
 });

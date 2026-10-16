@@ -20,10 +20,17 @@ export function createApp() {
   if (process.env['TRUST_PROXY'] === '1') app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-  app.use(cors({ origin: origins, credentials: true }));
+  const corsOptions = {
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  } as const;
+  app.use(cors(corsOptions));
+  app.options(/.*/, cors(corsOptions));
   app.use((req, res, next) => {
     res.set('Cache-Control', 'no-store');
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && (!req.headers.origin || !origins.includes(req.headers.origin))) {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !req.headers.origin) {
       res.status(403).json({ error: 'Origine non autorisée.' }); return;
     }
     next();
