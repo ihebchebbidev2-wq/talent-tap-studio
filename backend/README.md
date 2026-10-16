@@ -24,4 +24,4 @@ All personal data and photos are private. JPEG bytes are validated, decoded, res
 - `GET /api/health`: database connectivity check.
 
 ## Tests
-Set `DATABASE_URL` to a dedicated test database, `ADMIN_PASSWORD_HASH` and `FRONTEND_ORIGINS=http://localhost:8080`, run migrations, then `bun run test`. Tests insert and clean up their own records. Never use a production database for testing.
+Set `DATABASE_URL` to a dedicated test database, `ADMIN_PASSWORD_HASH`, `TEST_ADMIN_PASSWORD` (the plain password matching that hash) and `FRONTEND_ORIGINS=http://localhost:8080`, run migrations, then `bun run test`. Tests insert and clean up their own records. Never use a production database for testing.
