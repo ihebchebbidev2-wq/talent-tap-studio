@@ -14,3 +14,4 @@
 - [ ] Connect production — blocked until the external backend deployment address is supplied.
 - [x] Replace the admin submission table with photo cards linking to full profiles.
 - [x] Add and verify combined age, gender, city, experience and status filters in the admin API and interface.
+- [ ] Restore the bundled logo and verify uncropped banner framing across screen sizes in French and Arabic.

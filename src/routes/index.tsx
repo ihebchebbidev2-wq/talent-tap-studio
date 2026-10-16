@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUpRight, MapPin } from 'lucide-react';
-import logo from '@/assets/mega-creative-logo.png.asset.json';
+import logo from '@/assets/mega-creative-logo.png';
 import studio from '@/assets/casting-studio.jpg';
 import frenchFlag from '@/assets/flags/fr.png';
 import tunisianFlag from '@/assets/flags/tn.png';
@@ -30,7 +30,7 @@ function Index() {
   }, [language, direction]);
   return <main className="casting-page" lang={language} dir={direction}>
     <header className="site-header" dir="ltr">
-      <a href="/" aria-label="MEGA CREATIVE"><img className="brand-logo" src={logo.url} alt="MEGA CREATIVE" width={500} height={500} /></a>
+      <a href="/" aria-label="MEGA CREATIVE"><img className="brand-logo" src={logo} alt="MEGA CREATIVE" width={500} height={500} /></a>
       <span className="header-location"><MapPin /> {t('تونس')} <span>/</span> {t('كاستينغ')}</span>
       <nav className="language-switcher" aria-label={language === 'fr' ? 'Langue' : 'اللغة'}>
         {(['fr', 'ar'] as const).map(lang => <Button key={lang} type="button" variant="ghost" className="language-button" aria-label={lang === 'fr' ? 'Français' : 'العربية'} title={lang === 'fr' ? 'Français' : 'العربية'} aria-pressed={language === lang} onClick={() => setLanguage(lang)}>

@@ -89,7 +89,8 @@
   --hero-overlay: linear-gradient(90deg, oklch(0.12 0.005 260 / 12%) 20%, oklch(0.12 0.005 260 / 45%) 44%, oklch(0.12 0.005 260 / 95%) 76%);
   --focus-shadow: 0 0 0 3px oklch(0.54 0.225 262 / 13%);
   --selection-shadow: 0 1px 3px oklch(0.23 0.015 260 / 8%);
-  --hero-mobile-overlay: oklch(0.12 0.005 260 / 72%);
+  --hero-background: oklch(0.12 0.005 260);
+  --hero-mobile-overlay: linear-gradient(180deg, transparent 190px, var(--hero-background) 330px);
   --photo-overlay: oklch(0.99 0 0 / 94%);
   --font-body: 'Barlow', 'IBM Plex Sans Arabic', sans-serif;
   --font-latin: 'Barlow', sans-serif;
@@ -130,10 +131,10 @@ button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
 .header-location { display: flex; align-items: center; gap: 12px; font: 500 12px var(--font-latin); color: var(--muted-foreground); }
 .header-location svg { width: 14px; color: var(--brand-bright); }
 .header-location > span { color: var(--border); }
-.casting-hero { height: 420px; position: relative; overflow: hidden; }
-.hero-image { position: absolute; width: 100%; height: 100%; object-fit: cover; object-position: center 36%; }
+.casting-hero { min-height: 420px; position: relative; overflow: hidden; background: var(--hero-background); }
+.hero-image { position: absolute; width: 100%; height: 100%; object-fit: cover; object-position: center top; }
 .hero-shade { position: absolute; inset: 0; background: var(--hero-overlay); }
-.hero-copy { position: relative; width: min(1120px, calc(100% - 80px)); margin: auto; padding-top: 35px; padding-left: 51%; color: var(--hero-foreground); text-align: start; }
+.hero-copy { position: relative; width: min(1120px, calc(100% - 80px)); margin: auto; padding-block: 35px 52px; padding-left: 51%; color: var(--hero-foreground); text-align: start; min-width: 0; }
 .casting-page[dir=rtl] .hero-copy { padding-left: 51%; padding-right: 0; }
 .casting-tag { display: inline-flex; align-items: center; gap: 8px; color: var(--hero-muted); font-size: 12px; margin-bottom: 16px; }
 .casting-tag > span { width: 6px; height: 6px; background: var(--brand-bright); border-radius: 50%; }
@@ -240,9 +241,9 @@ button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
   .brand-logo { width: 83px; height: 78px; } .header-location { display: none; }
   .language-button { min-width: 84px; padding-inline: 8px; gap: 7px; font-size: 12px; }
   .language-button img { width: 19px; height: 13px; }
-  .casting-hero { height: 470px; } .hero-image { object-position: 33% center; }
+  .casting-hero { min-height: 0; } .hero-image { height: 330px; object-position: 30% top; }
   .hero-shade { background: var(--hero-mobile-overlay); }
-  .hero-copy, .casting-page[dir=rtl] .hero-copy { width: calc(100% - 40px); padding: 40px 0 0; }
+  .hero-copy, .casting-page[dir=rtl] .hero-copy { width: calc(100% - 40px); padding: 300px 0 60px; }
   .hero-copy h1 { font-size: 34px; } .hero-copy p { font-size: 14px; line-height: 1.7; max-width: 370px; }
   .casting-tag { font-size: 12px; } .hero-caption { left: 20px; bottom: 24px; font-size: 10px; }
   .category-band { flex-wrap: wrap; gap: 12px 0; min-height: 72px; font-size: 10px; padding: 15px 10px; }
@@ -370,7 +371,7 @@ select:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 @media (max-width: 800px) { .kpi-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }.detail-layout { grid-template-columns: 1fr; gap: 24px; }.admin-filters { width: 100%; }.search-field { flex: 1; }.search-field input { width: 100%; }.admin-title h1 { font-size: 28px; } }
 @media (max-width: 680px) {
   .casting-form { border-inline-start: 0; padding-inline-start: 0; }
-  .casting-hero { height: 430px; }.hero-copy { padding-top: 28px; }.hero-caption { bottom: 20px; }
+  .hero-caption { bottom: 20px; }
   .admin-header { height: 82px; padding: 0 16px; gap: 14px; }.admin-header img { width: 70px; height: 68px; }.admin-header > button { font-size: 12px; padding-inline: 10px; }
   .admin-content { padding: 30px 20px 48px; }.admin-title { align-items: flex-start; flex-direction: column; gap: 16px; }.admin-title h1 { font-size: 26px; }
   .admin-login { margin-top: 48px; }.admin-login h1 { font-size: 28px; }.kpi-grid { gap: 10px; margin-bottom: 28px; }.kpi { padding: 16px; }.kpi span { font-size: 12px; }.kpi strong { font-size: 30px; }
