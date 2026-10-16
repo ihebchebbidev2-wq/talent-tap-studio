@@ -7,9 +7,9 @@ Independent Node.js 22+ / Express / PostgreSQL service. It is not run by the Lov
 
 ## Run
 1. Create an empty PostgreSQL database with a dedicated application user.
-2. From `backend`, run `bun install`, copy `.env.example` to `.env`, and set your private `DATABASE_URL`.
+2. From `backend`, run `npm install`, copy `.env.example` to `.env`, and set your private `DATABASE_URL`.
 3. Run `node scripts/hash-password.mjs`, enter the requested admin password, and save the resulting hash as `ADMIN_PASSWORD_HASH`. Username defaults to the requested username. The password is never shipped to the browser or saved in source. Rotate the initially requested password before production: it was disclosed in chat.
-4. Run `bun run migrate`, then `bun run dev`. For deployment: `bun run build`, then `bun run start`.
+4. Run `npm run migrate`, then `npm run dev`. For deployment: `npm run build`, then `npm run start`.
 5. Set the frontend `VITE_BACKEND_URL` to the external backend origin (no `/api` suffix) and redeploy the frontend.
 
 ## Production
@@ -24,4 +24,4 @@ All personal data and photos are private. JPEG bytes are validated, decoded, res
 - `GET /api/health`: database connectivity check.
 
 ## Tests
-Set `DATABASE_URL` to a dedicated test database, `ADMIN_PASSWORD_HASH`, `TEST_ADMIN_PASSWORD` (the plain password matching that hash) and `FRONTEND_ORIGINS=http://localhost:8080`, run migrations, then `bun run test`. Tests insert and clean up their own records. Never use a production database for testing.
+Set `DATABASE_URL` to a dedicated test database, `ADMIN_PASSWORD_HASH`, `TEST_ADMIN_PASSWORD` (the plain password matching that hash) and `FRONTEND_ORIGINS=http://localhost:8080`, run migrations, then `npm run test`. Tests insert and clean up their own records. Never use a production database for testing.
