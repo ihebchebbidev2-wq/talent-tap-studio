@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import type { submissionSchema } from './schema';
 
-export const backendUrl = (import.meta.env['VITE_BACKEND_URL'] as string | undefined)?.replace(/\/$/, '') ?? '';
+export const backendUrl = 'https://api.megacreative.art';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
