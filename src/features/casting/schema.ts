@@ -2,14 +2,55 @@ import { z } from 'zod';
 
 export const ages = ['18-24', '25-34', '35-49', '50+'] as const;
 export const interestOptions = ['نحكي قدّام الكاميرا', 'نمثّل في فيديوهات إعلانية', 'تصوير صور للمنتجات', 'فيديوهات UGC', 'الكل'] as const;
-const optionalUrl = z.string().trim().max(500).refine(v => !v || /^https?:\/\//.test(v) && z.string().url().safeParse(v).success, 'الرابط لازم يبدأ بـ https://');
+
+const allowedSocialHosts = new Set([
+  'instagram.com',
+  'facebook.com',
+  'tiktok.com',
+  'twitter.com',
+  'x.com',
+  'linkedin.com',
+  'youtube.com',
+  'youtu.be',
+  'snapchat.com',
+  'threads.net',
+]);
+
+const isSafeHttpUrl = (value: string) => {
+  if (!value) return true;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    if (!host || host === 'localhost' || host.startsWith('127.') || host.startsWith('0.0.0.0')) return false;
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const isAllowedSocialProfileUrl = (value: string) => {
+  if (!value) return true;
+  try {
+    const parsed = new URL(value);
+    if (!isSafeHttpUrl(value)) return false;
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+    return [...allowedSocialHosts].some(domain => host === domain || host.endsWith(`.${domain}`));
+  } catch {
+    return false;
+  }
+};
+
+const optionalUrl = z.string().trim().max(500).refine(v => !v || isSafeHttpUrl(v), 'الرابط لازم يبدأ بـ https:// ويكون آمنًا');
+const socialProfileUrl = z.string().trim().max(500).refine(v => !v || isAllowedSocialProfileUrl(v), 'الرابط لازم يكون حسابًا رسميًا على Instagram أو Facebook أو TikTok أو منصات اجتماعية معروفة');
+
 export const applicationSchema = z.object({
   full_name: z.string().trim().min(2, 'اكتب اسمك ولقبك').max(100),
   phone: z.string().trim().regex(/^(?:\+216\s*)?[2459][0-9\s-]{7,14}$/, 'اكتب رقم تونسي صحيح (8 أرقام)'),
   age_group: z.enum(ages, { errorMap: () => ({ message: 'اختار الفئة العمرية' }) }),
   gender: z.enum(['male', 'female'], { errorMap: () => ({ message: 'اختار الجنس' }) }),
   city: z.string().trim().min(2, 'اكتب الولاية أو المدينة').max(100),
-  social_url: optionalUrl,
+  social_url: socialProfileUrl,
   experience: z.boolean().nullable(),
   interests: z.array(z.enum(interestOptions)).max(5),
   video_url: optionalUrl,
