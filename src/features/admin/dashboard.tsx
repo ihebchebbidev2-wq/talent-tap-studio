@@ -27,7 +27,7 @@ export function Dashboard() {
   function changeFilter(key: keyof typeof emptyFilters, value: string) { setFilters(v => ({ ...v, [key]: value })); setPage(1); }
   const metrics = [['Candidatures', stats?.total, Users], ['À examiner', stats?.new, Inbox], ['Présélectionnées', stats?.shortlisted, Star], ['Ce mois-ci', stats?.month, CalendarDays]] as const;
   return <>
-    <div className="admin-title"><div><span className="eyebrow">VUE D’ENSEMBLE</span><h1>Les prochains visages de MEGA.</h1><p>Vos candidatures, réunies au même endroit.</p></div><Button variant="outline" onClick={() => setRefresh(v => v + 1)} disabled={loading}><RefreshCw />Actualiser</Button></div>
+    <div className="admin-title"><div><span className="eyebrow">VUE D’ENSEMBLE</span><h1>Les prochains visages de MEGA.</h1><p>Vos candidatures, réunies au même endroit.</p></div><Button variant="outline" onClick={() => setRefresh(v => v + 1)} disabled={loading} title="Rafraîchir les données"><RefreshCw />Rafraîchir</Button></div>
     <div className="kpi-grid">{metrics.map(([label, value, Icon]) => <div className="kpi" key={label}><Icon /><span>{label}</span><strong>{value ?? '—'}</strong></div>)}</div>
     <section className="admin-submissions" aria-label="Candidatures">
       <div className="submissions-heading"><h2>Candidatures <span>{loading ? '—' : list?.total ?? '—'}</span></h2><label className="search-field"><Search /><input aria-label="Rechercher une candidature" placeholder="Nom, téléphone, référence…" value={search} onChange={e => setSearch(e.target.value)} /></label></div>
