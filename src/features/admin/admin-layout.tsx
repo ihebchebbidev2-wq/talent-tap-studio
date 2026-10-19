@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from '@tanstack/react-router';
 import { LogOut, LockKeyhole, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import logo from '@/assets/mega-creative-logo.png';
+import logo from '@/assets/mega-creative-logo.webp';
 import { api, backendUrl } from '@/features/casting/api';
 
 export function AdminLayout({ children }: { children: ReactNode }) {

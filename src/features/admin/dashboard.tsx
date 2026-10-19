@@ -17,11 +17,13 @@ export function Dashboard() {
   useEffect(() => { const timer = setTimeout(() => { setTextFilters({ q: search, city }); setPage(1); }, 300); return () => clearTimeout(timer); }, [search, city]);
   useEffect(() => {
     let active = true; setLoading(true); setError('');
-    Promise.all([api<typeof stats>('/admin/stats'), api<{ items: ApplicationSummary[]; total: number }>(`/admin/applications?${new URLSearchParams({ ...textFilters, ...filters, page: String(page) })}`)])
-      .then(([s, rows]) => { if (active) { setStats(s); setList(rows); } })
+    api<{ items: ApplicationSummary[]; total: number }>(`/admin/applications?${new URLSearchParams({ ...textFilters, ...filters, page: String(page) })}`)
+      .then(rows => { if (active) setList(rows); })
       .catch(err => { if (active) setError(err.message); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [textFilters, filters, page, refresh]);
+  // Totals don't depend on filters, so load them only on open and on refresh.
+  useEffect(() => { api<typeof stats>('/admin/stats').then(setStats).catch(() => {}); }, [refresh]);
   const activeFilters = !!(search || city || Object.values(filters).some(Boolean));
   function resetFilters() { setSearch(''); setCity(''); setTextFilters({ q: '', city: '' }); setFilters(emptyFilters); setPage(1); }
   function changeFilter(key: keyof typeof emptyFilters, value: string) { setFilters(v => ({ ...v, [key]: value })); setPage(1); }

@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUpRight, MapPin } from 'lucide-react';
-import logo from '@/assets/mega-creative-logo.png';
-import studio from '@/assets/casting-studio.jpg';
+import logo from '@/assets/mega-creative-logo.webp';
+import studio from '@/assets/casting-studio.webp';
+import studioSmall from '@/assets/casting-studio-900.webp';
 import frenchFlag from '@/assets/flags/fr.png';
 import tunisianFlag from '@/assets/flags/tn.png';
 import { CastingForm } from '@/features/casting/casting-form';
@@ -39,7 +40,7 @@ function Index() {
       </nav>
     </header>
     <section className="casting-hero">
-      <img className="hero-image" src={studio} alt={t('وجوه جديدة في استوديو تصوير إعلاني')} width={1600} height={912} fetchPriority="high" /><div className="hero-shade" />
+      <img className="hero-image" src={studio} srcSet={`${studioSmall} 900w, ${studio} 1600w`} sizes="100vw" decoding="async" alt={t('وجوه جديدة في استوديو تصوير إعلاني')} width={1600} height={912} fetchPriority="high" /><div className="hero-shade" />
       <div className="hero-copy"><span className="casting-tag">{t('وجوه جديدة • فرص إبداعية')}</span><h1 dir="ltr">MEGA CREATIVE<span>CASTING</span></h1><p className="hero-lead">{t('خلّينا نتعرّفوا عليك.')}</p><p>{t('تحب تشارك في تصوير الإعلانات والمحتوى؟')}<br />{t('عمّر الاستمارة، وفريقنا يتّصل بيك بعد مراجعة ترشّحك.')}</p><Button asChild size="lg"><a href="#application">{t('نبدأ الترشّح')} <ArrowDown /></a></Button></div>
       <div className="hero-caption" dir="ltr"><span className="caption-line" /> {t('وجوه جديدة. حكايات حقيقية.')}</div>
     </section>

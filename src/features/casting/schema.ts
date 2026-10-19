@@ -3,19 +3,6 @@ import { z } from 'zod';
 export const ages = ['18-24', '25-34', '35-49', '50+'] as const;
 export const interestOptions = ['نحكي قدّام الكاميرا', 'نمثّل في فيديوهات إعلانية', 'تصوير صور للمنتجات', 'فيديوهات UGC', 'الكل'] as const;
 
-const allowedSocialHosts = new Set([
-  'instagram.com',
-  'facebook.com',
-  'tiktok.com',
-  'twitter.com',
-  'x.com',
-  'linkedin.com',
-  'youtube.com',
-  'youtu.be',
-  'snapchat.com',
-  'threads.net',
-]);
-
 const isSafeHttpUrl = (value: string) => {
   if (!value) return true;
   try {
@@ -29,20 +16,17 @@ const isSafeHttpUrl = (value: string) => {
   }
 };
 
-const isAllowedSocialProfileUrl = (value: string) => {
+const platformUrl = (domain: string, message: string) => z.string().trim().max(500, message).refine(value => {
   if (!value) return true;
   try {
     const parsed = new URL(value);
-    if (!isSafeHttpUrl(value)) return false;
-    const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
-    return [...allowedSocialHosts].some(domain => host === domain || host.endsWith(`.${domain}`));
-  } catch {
-    return false;
-  }
-};
+    const host = parsed.hostname.toLowerCase();
+    return isSafeHttpUrl(value) && !parsed.username && !parsed.password &&
+      (host === domain || host.endsWith(`.${domain}`)) && parsed.pathname.replaceAll('/', '').length > 0;
+  } catch { return false; }
+}, message).default('');
 
 const optionalUrl = z.string().trim().max(500).refine(v => !v || isSafeHttpUrl(v), 'الرابط لازم يبدأ بـ https:// ويكون آمنًا');
-const socialProfileUrl = z.string().trim().max(500).refine(v => !v || isAllowedSocialProfileUrl(v), 'الرابط لازم يكون حسابًا رسميًا على Instagram أو Facebook أو TikTok أو منصات اجتماعية معروفة');
 
 export const applicationSchema = z.object({
   full_name: z.string().trim().min(2, 'اكتب اسمك ولقبك').max(100),
@@ -50,7 +34,9 @@ export const applicationSchema = z.object({
   age_group: z.enum(ages, { errorMap: () => ({ message: 'اختار الفئة العمرية' }) }),
   gender: z.enum(['male', 'female'], { errorMap: () => ({ message: 'اختار الجنس' }) }),
   city: z.string().trim().min(2, 'اكتب الولاية أو المدينة').max(100),
-  social_url: socialProfileUrl,
+  instagram_url: platformUrl('instagram.com', 'اكتب رابط حساب Instagram صحيح يبدأ بـ https://'),
+  facebook_url: platformUrl('facebook.com', 'اكتب رابط حساب Facebook صحيح يبدأ بـ https://'),
+  tiktok_url: platformUrl('tiktok.com', 'اكتب رابط حساب TikTok صحيح يبدأ بـ https://'),
   experience: z.boolean().nullable(),
   interests: z.array(z.enum(interestOptions)).max(5),
   video_url: optionalUrl,

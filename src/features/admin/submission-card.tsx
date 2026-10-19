@@ -8,7 +8,7 @@ export function SubmissionCard({ item }: { item: ApplicationSummary }) {
   const [imageFailed, setImageFailed] = useState(false);
   return <Link to="/admin/submissions/$id" params={{ id: item.id }} className="submission-card" aria-label={`Consulter ${item.full_name}`}>
     <div className="submission-card-photo">
-      {item.photo_id && !imageFailed ? <img src={`${backendUrl}/api/admin/photos/${item.photo_id}`} crossOrigin="use-credentials" alt={`Portrait de ${item.full_name}`} loading="lazy" onError={() => setImageFailed(true)} /> : <div className="submission-photo-placeholder"><UserRound /><span>Photo indisponible</span></div>}
+      {item.photo_id && !imageFailed ? <img src={`${backendUrl}/api/admin/photos/${item.photo_id}?size=thumb`} decoding="async" crossOrigin="use-credentials" alt={`Portrait de ${item.full_name}`} loading="lazy" onError={() => setImageFailed(true)} /> : <div className="submission-photo-placeholder"><UserRound /><span>Photo indisponible</span></div>}
     </div>
     <div className="submission-card-info">
       <div className="submission-card-status"><span className={`status-badge status-${item.status}`}>{statuses[item.status]}</span><ArrowUpRight aria-hidden="true" /></div>

@@ -31,14 +31,20 @@ test('private intake and complete admin lifecycle', async () => {
   assert.equal((await request('/auth/session')).status, 200);
   assert.equal((await request('/applications', 'POST', {})).status, 400);
   const jpeg = await sharp({ create: { width: 40, height: 40, channels: 3, background: '#ffffff' } }).jpeg().toBuffer();
-  const body = { full_name: 'Integration applicant', phone: '+216 25 123 456', age_group: '25-34', gender: 'female', city: 'Tunis', social_url: 'https://example.org/profile', experience: true, interests: ['فيديوهات UGC'], video_url: '', notes: 'Integration notes', consent: true, photos: [1, 2].map(() => ({ base64: jpeg.toString('base64'), type: 'image/jpeg' })) };
+  const body = { full_name: 'Integration applicant', phone: '+216 25 123 456', age_group: '25-34', gender: 'female', city: 'Tunis', instagram_url: 'https://www.instagram.com/creator_name/', facebook_url: 'https://www.facebook.com/creator.name', tiktok_url: 'https://www.tiktok.com/@creator', experience: true, interests: ['فيديوهات UGC'], video_url: '', notes: 'Integration notes', consent: true, photos: [1, 2].map(() => ({ base64: jpeg.toString('base64'), type: 'image/jpeg' })) };
+  for (const field of ['instagram_url', 'facebook_url', 'tiktok_url']) {
+    assert.equal((await request('/applications', 'POST', { ...body, [field]: 'https://example.org/profile' }, false)).status, 400);
+  }
   const submitted = await request('/applications', 'POST', body, false);
   assert.equal(submitted.status, 201);
   const { reference } = await submitted.json() as { reference: string };
   const list = await (await request(`/admin/applications?q=${reference}`)).json() as { items: { id: string; photo_id: string }[]; total: number };
   assert.equal(list.total, 1); id = list.items[0]?.id ?? ''; assert.ok(id);
-  const detail = await (await request(`/admin/applications/${id}`)).json() as { full_name: string; notes: string; photos: { id: string }[] };
+  const detail = await (await request(`/admin/applications/${id}`)).json() as { full_name: string; notes: string; instagram_url: string; facebook_url: string; tiktok_url: string; photos: { id: string }[] };
   assert.equal(detail.full_name, body.full_name); assert.equal(detail.notes, body.notes); assert.equal(detail.photos.length, 2);
+  assert.equal(detail.instagram_url, body.instagram_url);
+  assert.equal(detail.facebook_url, body.facebook_url);
+  assert.equal(detail.tiktok_url, body.tiktok_url);
   const photoId = detail.photos[0]?.id;
   assert.equal(list.items[0]?.photo_id, photoId);
   const matching = await (await request(`/admin/applications?${new URLSearchParams({ q: reference, age: '25-34', gender: 'female', city: 'tUn', experience: 'true', status: 'new' })}`)).json() as { total: number };

@@ -25,3 +25,5 @@ All personal data and photos are private. JPEG bytes are validated, decoded, res
 
 ## Tests
 Set `DATABASE_URL` to a dedicated test database, `ADMIN_PASSWORD_HASH`, `TEST_ADMIN_PASSWORD` (the plain password matching that hash) and `FRONTEND_ORIGINS=http://localhost:8080`, run migrations, then `npm run test`. Tests insert and clean up their own records. Never use a production database for testing.
+## Social-link upgrade
+Run migrations before deploying the updated API/frontend: `003_social_links.sql` adds separate optional `instagram_url`, `facebook_url`, and `tiktok_url` fields and backfills matching historical links. Other legacy social links remain available in admin details. New submissions use only the three platform-specific fields, each validated by the shared schema.

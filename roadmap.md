@@ -1,4 +1,6 @@
 # Casting page
+- [x] Split social links into Instagram, Facebook and TikTok across form, validation, storage and admin; verify submissions with photos against an isolated local API/database.
+- [ ] Deploy the updated external API and run migration 003 — blocked by access to the external server deployment.
 - [x] Build branded Tunisian Arabic casting form matching all reference fields.
 - [x] Add compressed photo uploads and private application storage.
 - [x] Verify submission, validation, layout and metadata.
@@ -11,7 +13,7 @@
 - [x] Create standalone Node.js/PostgreSQL backend with private intake, server-verified admin sessions, APIs and deployment instructions.
 - [x] Add /admin login, KPIs, searchable submissions and full applicant detail pages.
 - [x] Verify backend and admin flows against a local Node API and PostgreSQL database.
-- [ ] Connect production — blocked until the external backend deployment address is supplied.
+- [x] Connect production — the frontend uses the external API address.
 - [x] Replace the admin submission table with photo cards linking to full profiles.
 - [x] Add and verify combined age, gender, city, experience and status filters in the admin API and interface.
 - [ ] Restore the bundled logo and verify uncropped banner framing across screen sizes in French and Arabic.

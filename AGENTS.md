@@ -21,3 +21,6 @@
 - Deploy `backend` separately as Node.js with PostgreSQL; frontend REST calls use `VITE_BACKEND_URL` and never fall back to Cloud intake, so deployment boundaries stay explicit.
 - Verify admin credentials only in Node.js using a password hash and PostgreSQL-backed opaque HttpOnly sessions; every admin API and photo request must authenticate independently of page navigation.
 - Filter and paginate admin submissions in PostgreSQL and return only a protected first-photo identifier with each summary, so cards stay lightweight and private.
+- Store a small thumbnail beside each applicant photo and serve photos with private long-lived caching, so admin cards load fast without exposing images publicly.
+
+- Store separate platform-specific social URLs; retain legacy social_url only for historical data so upgrades preserve existing applicants.

@@ -59,24 +59,32 @@ export function createApp() {
     const parsed = submissionSchema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: 'Veuillez vérifier les informations et les photos.' }); return; }
     const data = parsed.data;
-    const images: Buffer[] = [];
+    let images: { image: Buffer; thumb: Buffer }[];
     try {
-      for (const photo of data.photos) {
+      images = await Promise.all(data.photos.map(async photo => {
         if (!/^[A-Za-z0-9+/]+={0,2}$/.test(photo.base64)) throw new Error('Invalid encoding');
         const buffer = Buffer.from(photo.base64, 'base64');
         if (buffer.length > 1048576 || buffer[0] !== 255 || buffer[1] !== 216) throw new Error('Invalid JPEG');
-        const image = sharp(buffer, { limitInputPixels: 25_000_000 });
-        const metadata = await image.metadata();
+        const source = sharp(buffer, { limitInputPixels: 25_000_000 });
+        const metadata = await source.metadata();
         if (metadata.format !== 'jpeg') throw new Error('Invalid format');
-        images.push(await image.rotate().resize(1600, 1600, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 85 }).toBuffer());
-      }
+        const rotated = source.rotate();
+        const [image, thumb] = await Promise.all([
+          rotated.clone().resize(1600, 1600, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 85, mozjpeg: true }).toBuffer(),
+          rotated.clone().resize(480, 600, { fit: 'cover', position: 'attention' }).jpeg({ quality: 72, mozjpeg: true }).toBuffer(),
+        ]);
+        return { image, thumb };
+      }));
     } catch { res.status(400).json({ error: 'Une photo est invalide. Choisissez une autre image JPEG.' }); return; }
     const id = randomUUID(); const reference = id.replaceAll('-', '').slice(0, 12).toUpperCase();
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query('INSERT INTO applications(id,reference,full_name,phone,age_group,gender,city,social_url,experience,interests,video_url,notes,consent) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)', [id, reference, data.full_name, data.phone, data.age_group, data.gender, data.city, data.social_url, data.experience, data.interests, data.video_url, data.notes, data.consent]);
-      for (const [position, image] of images.entries()) await client.query('INSERT INTO application_photos(id,application_id,position,image) VALUES ($1,$2,$3,$4)', [randomUUID(), id, position, image]);
+      await client.query('INSERT INTO applications(id,reference,full_name,phone,age_group,gender,city,instagram_url,facebook_url,tiktok_url,experience,interests,video_url,notes,consent) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)', [id, reference, data.full_name, data.phone, data.age_group, data.gender, data.city, data.instagram_url, data.facebook_url, data.tiktok_url, data.experience, data.interests, data.video_url, data.notes, data.consent]);
+      if (images.length) {
+        const values = images.map((_, i) => `($${i * 5 + 1},$${i * 5 + 2},$${i * 5 + 3},$${i * 5 + 4},$${i * 5 + 5})`).join(',');
+        await client.query(`INSERT INTO application_photos(id,application_id,position,image,thumb) VALUES ${values}`, images.flatMap((p, position) => [randomUUID(), id, position, p.image, p.thumb]));
+      }
       await client.query('COMMIT'); res.status(201).json({ reference });
     } catch (error) { await client.query('ROLLBACK'); throw error; }
     finally { client.release(); }
@@ -124,9 +132,11 @@ export function createApp() {
   });
   app.get('/api/admin/photos/:id', async (req, res) => {
     if (!z.string().uuid().safeParse(req.params['id']).success) { res.sendStatus(404); return; }
-    const result = await pool.query('SELECT image FROM application_photos WHERE id=$1', [req.params['id']]);
+    const thumb = req.query['size'] === 'thumb';
+    const result = await pool.query(thumb ? 'SELECT COALESCE(thumb,image) AS image FROM application_photos WHERE id=$1' : 'SELECT image FROM application_photos WHERE id=$1', [req.params['id']]);
     if (!result.rowCount) { res.sendStatus(404); return; }
-    res.type('image/jpeg').send(result.rows[0].image);
+    // Photos never change once stored, so the browser may keep its private copy.
+    res.set('Cache-Control', 'private, max-age=604800, immutable').type('image/jpeg').send(result.rows[0].image);
   });
   app.use((_req, res) => res.status(404).json({ error: 'Page introuvable.' }));
   app.use((error: Error & { status?: number }, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
