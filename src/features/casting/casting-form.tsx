@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, UserRound, Clapperboard, Images, ShieldCheck, Check, LoaderCircle, CircleCheck } from 'lucide-react';
+import { ArrowLeft, UserRound, Clapperboard, Images, ShieldCheck, Check, LoaderCircle } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { storeReceipt, createReceipt } from './receipt';
+import { advertisingAllowed, getRegion, readChoice } from '@/features/tracking/consent';
 import { Button } from '@/components/ui/button';
 import { applicationSchema, ages, interestOptions } from './schema';
 import { submitApplication, backendUrl } from './api';
@@ -7,6 +10,7 @@ import { PhotoUpload, type CastingPhoto } from './photo-upload';
 import { translate, type Language } from './localization';
 
 export function CastingForm({ language }: { language: Language }) {
+  const navigate = useNavigate();
   const t = (key: string) => translate(language, key);
   const direction = language === 'ar' ? 'rtl' : 'ltr';
   const [values, setValues] = useState({ full_name: '', phone: '', city: '', instagram_url: '', facebook_url: '', tiktok_url: '', video_url: '', notes: '', age_group: '', gender: '', experience: null as boolean | null, interests: [] as string[], consent: false });
@@ -16,7 +20,6 @@ export function CastingForm({ language }: { language: Language }) {
   useEffect(() => () => photoRef.current.forEach(p => URL.revokeObjectURL(p.preview)), []);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
-  const [reference, setReference] = useState('');
   const set = (key: keyof typeof values, value: string | boolean | string[] | null) => { setValues(v => ({ ...v, [key]: value })); setErrors(e => ({ ...e, [key]: '' })); };
   const completed = [values.full_name && values.phone && values.age_group && values.gender && values.city, values.experience !== null || values.interests.length > 0 || values.instagram_url || values.facebook_url || values.tiktok_url, photos.length >= 2].filter(Boolean).length;
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -36,9 +39,11 @@ export function CastingForm({ language }: { language: Language }) {
         for (const byte of bytes) binary += String.fromCharCode(byte);
         return { base64: btoa(binary), type: 'image/jpeg' as const };
       }));
+      const allowed = advertisingAllowed(await getRegion(), readChoice());
       const result = await submitApplication({ ...parsed.data, photos: encoded });
-      setReference(result.reference);
-      document.getElementById('application')?.scrollIntoView({ behavior: 'smooth' });
+      const receipt = createReceipt(result, language, allowed && advertisingAllowed(await getRegion(), readChoice()));
+      storeReceipt(receipt);
+      await navigate({ to: '/casting/success', replace: true });
     } catch { setErrors({ submit: backendUrl ? 'ما نجّمش نبعثوا الترشّح توّا. بياناتك مازالت هنا، عاود جرّب.' : 'الخدمة تتفعّل بعد ربط الخادم. بياناتك مازالت هنا.' }); }
     finally { setSending(false); }
   }
@@ -51,7 +56,6 @@ export function CastingForm({ language }: { language: Language }) {
     }} placeholder={t(placeholder)} maxLength={name.includes('url') ? 500 : 100} type={name === 'phone' ? 'tel' : name.includes('url') ? 'url' : 'text'} dir={name === 'phone' || name.includes('url') ? 'ltr' : direction} autoComplete={name === 'full_name' ? 'name' : name === 'phone' ? 'tel' : name === 'city' ? 'address-level2' : 'off'} aria-invalid={!!errors[name]} aria-describedby={errors[name] ? `${name}-error` : undefined} />
     {errors[name] && <p id={`${name}-error`} className="field-error">{t(errors[name])}</p>}
   </div>;
-  if (reference) return <section id="application" className="success-section" dir={direction}><CircleCheck /><span className="eyebrow">{t('ترشّحك وصلنا')}</span><h2>{t('شكراً، خلّينا نتلاقاو قريب!')}</h2><p>{t('حفظنا بياناتك وصورك. فريقنا يراجع ترشّحك ويتّصل بيك بخصوصه.')}</p><span className="reference">{t('رقم الترشّح:')}<b dir="ltr">{reference}</b></span></section>;
   return <section id="application" className="application-layout" dir={direction}>
     <aside className="application-aside"><span className="eyebrow">{t('الفصل الجاي')}</span><h2>{t('البداية من هنا')}<span className="accent-dot">.</span></h2><p>{t('وجه جديد، طاقة جديدة. نحبّوا نتعرّفوا عليك.')}</p><div className="section-nav">{['معلوماتك الأساسية', 'تجربتك واهتماماتك', 'صورك وأعمالك'].map((label, i) => <a href={`#section-${i + 1}`} key={label}><span dir="ltr">0{i + 1}</span>{t(label)}<ArrowLeft /></a>)}</div><div className="aside-privacy"><ShieldCheck /><p>{t('المعلومات متاحة فقط للفريق المسؤول على مراجعة الترشّحات.')}</p></div></aside>
     <form onSubmit={handleSubmit} noValidate className="casting-form"><div className="form-intro"><span>{t('استمارة الترشّح')}</span><span className="completion">{completed} / 3 <span>{t('أقسام')}</span></span></div><div className="progress-track"><div className={`progress-fill progress-${completed}`} /></div>

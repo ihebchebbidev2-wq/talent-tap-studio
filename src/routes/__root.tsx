@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useLocation,
   HeadContent,
   Scripts,
   type ErrorComponentProps,
@@ -12,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { publicTrackingPath } from '@/features/tracking/meta';
 
 function NotFoundComponent() {
   return (
@@ -118,6 +120,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useLocation({ select: location => location.pathname });
+  useEffect(() => { if (!publicTrackingPath(pathname)) window.fbq?.('consent', 'revoke'); }, [pathname]);
 
   return (
     <QueryClientProvider client={queryClient}>

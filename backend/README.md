@@ -23,6 +23,19 @@ All personal data and photos are private. JPEG bytes are validated, decoded, res
 - Admin-only: `GET /api/admin/stats`, `GET /api/admin/applications?q=&status=&page=`, `GET/PATCH /api/admin/applications/:id`, `GET /api/admin/photos/:id`.
 - `GET /api/health`: database connectivity check.
 
+## Administrator and tracking upgrade
+Deploy the updated API and run `npm run migrate` before deploying this frontend. Migration 004 creates individual accounts, separate roles, user-linked sessions, Pixel settings, and advertising-choice evidence. Existing environment credentials initialize the first full-access account only when the accounts table is empty; later migrations never replace its password. Legacy sessions are invalidated: sign in again. Database and photo backups remain your responsibility.
+
+The admin interface now provides `/admin/users` (create accounts, change access, disable accounts, reset passwords) and `/admin/settings` (numeric Pixel ID and enable switch). View-only users can read applications and photos but cannot change status, delete entries, manage accounts or configure tracking. API checks enforce these rules independently of the UI. Disabling, changing roles, or resetting passwords revokes that account’s sessions. Your own full-access account cannot be demoted/disabled; the last active full-access account is protected transactionally.
+
+`DELETE /api/admin/applications/:id` permanently deletes the entry and cascades to all photos/thumbnails. It cannot recall previously downloaded images or retained backups. Photos now use `Cache-Control: no-store`.
+
+`GET /api/tracking/settings` exposes only the public Pixel ID and enabled flag. `POST /api/tracking/consent` records a random visitor ID, advertising acceptance/refusal, region, timestamp and notice version. Notice `2026-11-02` resolves to the privacy page and cookie-choice notice in this release: Meta receives browser/IP/page/cookie data for completed-application measurement and ad optimization, never form fields/photos; accept/reject are equally available, and Cookie settings permit withdrawal. Preserve historical notice text with deployment releases. Do not delete acceptance evidence when recording later withdrawals.
+
+The browser reports `CompleteRegistration` after a saved candidature reaches `/casting/success`, using an independent opaque event ID. No PageView, advanced matching or server uploads are installed. Consent-region and unknown-region visitors remain blocked until recorded acceptance; explicit refusals apply everywhere. Admin pages never initialize the Pixel. Do not configure automatic advanced matching or automatic form/event collection in Meta. Check dataset restrictions and Test Events in Events Manager, accept Business Tools Terms, and confirm the live domain’s traffic permissions before enabling ads. A saved Pixel setting and queued browser event are not proof of Meta receipt or attribution.
+
+Production requires frontend/API addresses on the same site (or a same-origin proxy) for the existing SameSite=Lax cookie. Set every authorized frontend origin explicitly in `FRONTEND_ORIGINS`; unapproved mutation origins are rejected. Configure the production frontend URL before verification. The separately hosted API is not deployed automatically with the Lovable frontend.
+
 ## Tests
 Set `DATABASE_URL` to a dedicated test database, `ADMIN_PASSWORD_HASH`, `TEST_ADMIN_PASSWORD` (the plain password matching that hash) and `FRONTEND_ORIGINS=http://localhost:8080`, run migrations, then `npm run test`. Tests insert and clean up their own records. Never use a production database for testing.
 ## Social-link upgrade

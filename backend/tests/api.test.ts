@@ -15,11 +15,13 @@ if (!password) throw new Error('Set TEST_ADMIN_PASSWORD for integration tests.')
 let cookie = ''; let id = '';
 const request = (path: string, method = 'GET', data?: unknown, authenticated = true) => fetch(`${base}${path}`, { method, headers: { Origin: origin, 'Content-Type': 'application/json', ...(authenticated && cookie ? { Cookie: cookie } : {}) }, ...(data === undefined ? {} : { body: JSON.stringify(data) }) });
 after(async () => { if (id) await pool.query('DELETE FROM applications WHERE id=$1', [id]); if (cookie) await request('/auth/logout', 'POST'); await new Promise<void>(resolve => server.close(() => resolve())); await pool.end(); });
-test('accepts CORS requests from arbitrary frontend origins', async () => {
+test('accepts only configured frontend origins', async () => {
   const preflight = await fetch(`${base}/auth/session`, { method: 'OPTIONS', headers: { Origin: 'https://www.megacreative.art', 'Access-Control-Request-Method': 'GET' } });
-  assert.equal(preflight.status, 204);
-  assert.equal(preflight.headers.get('access-control-allow-origin'), 'https://www.megacreative.art');
-  assert.equal(preflight.headers.get('access-control-allow-credentials'), 'true');
+  assert.equal(preflight.status, 404);
+  assert.equal(preflight.headers.get('access-control-allow-origin'), null);
+  const trusted = await fetch(`${base}/auth/session`, { method: 'OPTIONS', headers: { Origin: origin, 'Access-Control-Request-Method': 'GET' } });
+  assert.equal(trusted.headers.get('access-control-allow-origin'), origin);
+  assert.equal(trusted.headers.get('access-control-allow-credentials'), 'true');
 });
 
 test('private intake and complete admin lifecycle', async () => {
@@ -62,7 +64,42 @@ test('private intake and complete admin lifecycle', async () => {
   const updated = await (await request(`/admin/applications/${id}`)).json() as { status: string };
   assert.equal(updated.status, 'shortlisted');
   const crossOriginPatch = await fetch(`${base}/admin/applications/${id}`, { method: 'PATCH', headers: { Origin: 'https://www.megacreative.art', Cookie: cookie, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }) });
-  assert.equal(crossOriginPatch.status, 200);
+  assert.equal(crossOriginPatch.status, 403);
+  const viewerPassword = 'Disposable-viewer-password-2026';
+  const viewerUsername = `viewer_${Date.now()}`;
+  const createdUser = await request('/admin/users', 'POST', { username: viewerUsername, password: viewerPassword, role: 'viewer' });
+  assert.equal(createdUser.status, 201);
+  const viewerId = (await createdUser.json() as { id: string }).id;
+  const viewerLogin = await request('/auth/login', 'POST', { username: viewerUsername, password: viewerPassword }, false);
+  assert.equal(viewerLogin.status, 200);
+  const viewerCookie = viewerLogin.headers.get('set-cookie')?.split(';')[0] ?? '';
+  const viewerRequest = (path: string, method = 'GET', data?: unknown) => fetch(`${base}${path}`, { method, headers: { Origin: origin, Cookie: viewerCookie, 'Content-Type': 'application/json' }, ...(data === undefined ? {} : { body: JSON.stringify(data) }) });
+  try {
+    assert.equal((await viewerRequest('/admin/stats')).status, 200);
+    assert.equal((await viewerRequest(`/admin/applications/${id}`)).status, 200);
+    assert.equal((await viewerRequest(`/admin/photos/${photoId}`)).status, 200);
+    assert.equal((await viewerRequest(`/admin/applications/${id}`, 'PATCH', { status: 'rejected' })).status, 403);
+    assert.equal((await viewerRequest(`/admin/applications/${id}`, 'DELETE')).status, 403);
+    assert.equal((await viewerRequest('/admin/users')).status, 403);
+    assert.equal((await viewerRequest('/admin/users', 'POST', { username: 'escalation', password: viewerPassword, role: 'full' })).status, 403);
+    assert.equal((await viewerRequest(`/admin/users/${viewerId}`, 'PATCH', { role: 'full', active: true })).status, 403);
+    assert.equal((await viewerRequest('/admin/settings')).status, 403);
+    assert.equal((await viewerRequest('/admin/settings', 'PUT', { pixel_id: '123456789', enabled: true })).status, 403);
+    assert.equal((await request('/admin/settings', 'PUT', { pixel_id: '', enabled: true })).status, 400);
+    assert.equal((await request('/admin/settings', 'PUT', { pixel_id: '123456789', enabled: false })).status, 200);
+    const publicSettings = await (await request('/tracking/settings', 'GET', undefined, false)).json() as { pixel_id: string; enabled: boolean };
+    assert.equal(publicSettings.pixel_id, '123456789'); assert.equal(publicSettings.enabled, false);
+    const self = await (await request('/auth/session')).json() as { id: string };
+    assert.equal((await request(`/admin/users/${self.id}`, 'PATCH', { role: 'viewer', active: false })).status, 409);
+    assert.equal((await request(`/admin/users/${viewerId}`, 'PATCH', { role: 'viewer', active: false })).status, 200);
+    assert.equal((await viewerRequest('/admin/stats')).status, 401);
+    assert.equal((await request(`/admin/photos/${photoId}`)).headers.get('cache-control'), 'no-store');
+    assert.equal((await request(`/admin/applications/${id}`, 'DELETE')).status, 200);
+    assert.equal((await request(`/admin/applications/${id}`)).status, 404);
+    assert.equal((await request(`/admin/photos/${photoId}`)).status, 404);
+    const photoCount = await pool.query('SELECT count(*)::int total FROM application_photos WHERE application_id=$1', [id]);
+    assert.equal(photoCount.rows[0].total, 0);
+  } finally { await pool.query('DELETE FROM admin_users WHERE id=$1', [viewerId]); }
   assert.equal((await request('/auth/logout', 'POST')).status, 200);
   assert.equal((await request('/admin/stats')).status, 401);
 });

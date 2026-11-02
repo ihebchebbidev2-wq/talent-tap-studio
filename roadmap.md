@@ -1,6 +1,15 @@
 # Casting page
+- [x] Final readiness checks: legacy-response and unavailable-storage confirmations, stale-acceptance/withdrawal protection, route revocation, 27 frontend tests, isolated backend lifecycle, and browser legacy-response test.
+- [x] Confirm public website https://www.megacreative.art/, user-managed external server redeployment, and indefinite application/photo retention.
+- [x] Obtain public privacy contact: contact@megacreative.art.
+- [ ] Configure and verify a Meta Pixel — user will create it in Meta and provide the numeric ID.
+- [x] Add server-authorized candidature deletion with confirmation and photo cascade.
+- [x] Add individual admin accounts with view-only/full-access permissions and user management.
+- [x] Add pixel configuration, regional advertising consent, linked privacy page, and verified-success completion measurement.
+- [x] Add a separate bilingual success URL and verify frontend/backend flows and permission denials.
+- [ ] Verify Meta receipt and live tracking — blocked until Meta access, selected pixel, and published tracking are available.
 - [x] Split social links into Instagram, Facebook and TikTok across form, validation, storage and admin; verify submissions with photos against an isolated local API/database.
-- [ ] Deploy the updated external API and run migration 003 — blocked by access to the external server deployment.
+- [ ] Deploy the updated external API and run migrations 003 and 004 — user will redeploy; live tracking settings still return 404.
 - [x] Build branded Tunisian Arabic casting form matching all reference fields.
 - [x] Add compressed photo uploads and private application storage.
 - [x] Verify submission, validation, layout and metadata.
@@ -16,4 +25,4 @@
 - [x] Connect production — the frontend uses the external API address.
 - [x] Replace the admin submission table with photo cards linking to full profiles.
 - [x] Add and verify combined age, gender, city, experience and status filters in the admin API and interface.
-- [ ] Restore the bundled logo and verify uncropped banner framing across screen sizes in French and Arabic.
+- [ ] Verify uncropped banner framing across screen sizes in French and Arabic — pending original reference/confirmation; bundled logo is present.

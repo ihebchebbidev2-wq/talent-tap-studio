@@ -7,21 +7,19 @@ import sharp from 'sharp';
 import { z } from 'zod';
 import { ages, submissionSchema } from '../../src/features/casting/schema';
 import { pool } from './db/pool';
-import { hashToken, requireAdmin, sessionToken, verifyPassword } from './security';
+import { hashToken, requireAdmin, requireFullAccess, sessionToken, verifyPassword } from './security';
+import { adminRoutes } from './admin-routes';
 
 export function createApp() {
   const app = express();
   const origins = (process.env['FRONTEND_ORIGINS'] ?? 'http://localhost:8080').split(',').map(v => v.trim());
   const production = process.env['NODE_ENV'] === 'production';
-  const username = process.env['ADMIN_USERNAME'] ?? 'Mega';
-  const passwordHash = process.env['ADMIN_PASSWORD_HASH'];
-  if (!passwordHash) throw new Error('Set ADMIN_PASSWORD_HASH before starting the backend.');
   if (production && origins.some(origin => !origin.startsWith('https://'))) throw new Error('Production origins must use HTTPS.');
   if (process.env['TRUST_PROXY'] === '1') app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   const corsOptions = {
-    origin: true,
+    origin: (origin: string | undefined, callback: (error: Error | null, allowed?: boolean) => void) => callback(null, !origin || origins.includes(origin)),
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
@@ -30,7 +28,7 @@ export function createApp() {
   app.options(/.*/, cors(corsOptions));
   app.use((req, res, next) => {
     res.set('Cache-Control', 'no-store');
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !req.headers.origin) {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && (!req.headers.origin || !origins.includes(req.headers.origin))) {
       res.status(403).json({ error: 'Origine non autorisée.' }); return;
     }
     next();
@@ -38,19 +36,18 @@ export function createApp() {
   app.use(express.json({ limit: '5mb' }));
   const cookie = { httpOnly: true, secure: production, sameSite: 'lax' as const, path: '/api', maxAge: 8 * 60 * 60 * 1000 };
   app.get('/api/health', async (_req, res) => { await pool.query('SELECT 1'); res.json({ ok: true }); });
-  app.post('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: 'draft-8', legacyHeaders: false }), (req, res) => {
+  app.post('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: 'draft-8', legacyHeaders: false }), async (req, res) => {
     const parsed = z.object({ username: z.string().max(100), password: z.string().max(200) }).safeParse(req.body);
-    if (!parsed.success || !verifyPassword(parsed.data.password, passwordHash) || parsed.data.username !== username) {
+    const account = parsed.success ? (await pool.query('SELECT u.id,u.username,u.password_hash,r.role FROM admin_users u JOIN admin_user_roles r ON r.user_id=u.id WHERE u.username=$1 AND u.active=true', [parsed.data.username.trim().toLowerCase()])).rows[0] : undefined;
+    if (!parsed.success || !account || !verifyPassword(parsed.data.password, account.password_hash)) {
       res.status(401).json({ error: 'Identifiants incorrects.' }); return;
     }
-    return (async () => {
       const token = randomBytes(32).toString('hex');
       await pool.query('DELETE FROM admin_sessions WHERE expires_at<=now()');
-      await pool.query("INSERT INTO admin_sessions(token_hash, expires_at) VALUES ($1, now()+interval '8 hours')", [hashToken(token)]);
-      res.cookie('mega_session', token, cookie).json({ username });
-    })();
+      await pool.query("INSERT INTO admin_sessions(token_hash, expires_at,user_id) VALUES ($1, now()+interval '8 hours',$2)", [hashToken(token), account.id]);
+      res.cookie('mega_session', token, cookie).json({ id: account.id, username: account.username, role: account.role });
   });
-  app.get('/api/auth/session', requireAdmin, (_req, res) => res.json({ username }));
+  app.get('/api/auth/session', requireAdmin, (_req, res) => res.json(res.locals['admin']));
   app.post('/api/auth/logout', requireAdmin, async (req, res) => {
     await pool.query('DELETE FROM admin_sessions WHERE token_hash=$1', [hashToken(sessionToken(req))]);
     res.clearCookie('mega_session', { ...cookie, maxAge: undefined }).json({ ok: true });
@@ -85,11 +82,22 @@ export function createApp() {
         const values = images.map((_, i) => `($${i * 5 + 1},$${i * 5 + 2},$${i * 5 + 3},$${i * 5 + 4},$${i * 5 + 5})`).join(',');
         await client.query(`INSERT INTO application_photos(id,application_id,position,image,thumb) VALUES ${values}`, images.flatMap((p, position) => [randomUUID(), id, position, p.image, p.thumb]));
       }
-      await client.query('COMMIT'); res.status(201).json({ reference });
+      await client.query('COMMIT'); res.status(201).json({ reference, event_id: randomUUID() });
     } catch (error) { await client.query('ROLLBACK'); throw error; }
     finally { client.release(); }
   });
+  app.get('/api/tracking/settings', async (_req, res) => {
+    res.json((await pool.query('SELECT pixel_id,enabled FROM tracking_settings WHERE singleton=true')).rows[0]);
+  });
+  app.post('/api/tracking/consent', rateLimit({ windowMs: 60 * 60 * 1000, limit: 60, standardHeaders: 'draft-8', legacyHeaders: false }), async (req, res) => {
+    const parsed = z.object({ visitor_id: z.string().uuid(), accepted: z.boolean(), region: z.string().regex(/^[A-Z]{2}$/), notice_version: z.literal('2026-11-02') }).safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: 'Choix de confidentialité invalide.' }); return; }
+    const id = randomUUID();
+    await pool.query('INSERT INTO advertising_consent(id,visitor_id,accepted,region,notice_version) VALUES ($1,$2,$3,$4,$5)', [id, parsed.data.visitor_id, parsed.data.accepted, parsed.data.region, parsed.data.notice_version]);
+    res.status(201).json({ id });
+  });
   app.use('/api/admin', requireAdmin);
+  app.use('/api/admin', adminRoutes);
   app.get('/api/admin/stats', async (_req, res) => {
     const result = await pool.query("SELECT count(*)::int total, count(*) FILTER(WHERE status='new')::int new, count(*) FILTER(WHERE status='shortlisted')::int shortlisted, count(*) FILTER(WHERE created_at>=date_trunc('month',now()))::int AS \"month\" FROM applications");
     res.json(result.rows[0]);
@@ -123,12 +131,18 @@ export function createApp() {
     const photos = await pool.query('SELECT id,position FROM application_photos WHERE application_id=$1 ORDER BY position', [req.params['id']]);
     res.json({ ...result.rows[0], photos: photos.rows });
   });
-  app.patch('/api/admin/applications/:id', async (req, res) => {
+  app.patch('/api/admin/applications/:id', requireFullAccess, async (req, res) => {
     const parsed = z.object({ status: z.enum(['new','reviewing','shortlisted','rejected']) }).safeParse(req.body);
     if (!parsed.success || !z.string().uuid().safeParse(req.params['id']).success) { res.status(400).json({ error: 'Statut invalide.' }); return; }
     const result = await pool.query('UPDATE applications SET status=$1 WHERE id=$2 RETURNING status', [parsed.data.status, req.params['id']]);
     if (!result.rowCount) { res.status(404).json({ error: 'Candidature introuvable.' }); return; }
     res.json(result.rows[0]);
+  });
+  app.delete('/api/admin/applications/:id', requireFullAccess, async (req, res) => {
+    if (!z.string().uuid().safeParse(req.params['id']).success) { res.status(404).json({ error: 'Candidature introuvable.' }); return; }
+    const result = await pool.query('DELETE FROM applications WHERE id=$1 RETURNING id', [req.params['id']]);
+    if (!result.rowCount) { res.status(404).json({ error: 'Candidature introuvable.' }); return; }
+    res.json({ ok: true });
   });
   app.get('/api/admin/photos/:id', async (req, res) => {
     if (!z.string().uuid().safeParse(req.params['id']).success) { res.sendStatus(404); return; }
@@ -136,7 +150,7 @@ export function createApp() {
     const result = await pool.query(thumb ? 'SELECT COALESCE(thumb,image) AS image FROM application_photos WHERE id=$1' : 'SELECT image FROM application_photos WHERE id=$1', [req.params['id']]);
     if (!result.rowCount) { res.sendStatus(404); return; }
     // Photos never change once stored, so the browser may keep its private copy.
-    res.set('Cache-Control', 'private, max-age=604800, immutable').type('image/jpeg').send(result.rows[0].image);
+    res.set('Cache-Control', 'no-store').type('image/jpeg').send(result.rows[0].image);
   });
   app.use((_req, res) => res.status(404).json({ error: 'Page introuvable.' }));
   app.use((error: Error & { status?: number }, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

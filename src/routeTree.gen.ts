@@ -11,7 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as CastingSuccessRouteImport } from './routes/casting.success'
 import { Route as AdminSubmissionsIdRouteImport } from './routes/admin.submissions.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -24,10 +28,30 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const CastingSuccessRoute = CastingSuccessRouteImport.update({
+  id: '/casting/success',
+  path: '/casting/success',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminSubmissionsIdRoute = AdminSubmissionsIdRouteImport.update({
   id: '/submissions/$id',
@@ -38,11 +62,19 @@ const AdminSubmissionsIdRoute = AdminSubmissionsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/privacy': typeof PrivacyRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/casting/success': typeof CastingSuccessRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/submissions/$id': typeof AdminSubmissionsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/casting/success': typeof CastingSuccessRoute
   '/admin': typeof AdminIndexRoute
   '/admin/submissions/$id': typeof AdminSubmissionsIdRoute
 }
@@ -50,20 +82,50 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/privacy': typeof PrivacyRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/casting/success': typeof CastingSuccessRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/submissions/$id': typeof AdminSubmissionsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/admin/' | '/admin/submissions/$id'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/privacy'
+    | '/admin/settings'
+    | '/admin/users'
+    | '/casting/success'
+    | '/admin/'
+    | '/admin/submissions/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/admin/submissions/$id'
-  id: '__root__' | '/' | '/admin' | '/admin/' | '/admin/submissions/$id'
+  to:
+    | '/'
+    | '/privacy'
+    | '/admin/settings'
+    | '/admin/users'
+    | '/casting/success'
+    | '/admin'
+    | '/admin/submissions/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/privacy'
+    | '/admin/settings'
+    | '/admin/users'
+    | '/casting/success'
+    | '/admin/'
+    | '/admin/submissions/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
+  CastingSuccessRoute: typeof CastingSuccessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,12 +144,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/casting/success': {
+      id: '/casting/success'
+      path: '/casting/success'
+      fullPath: '/casting/success'
+      preLoaderRoute: typeof CastingSuccessRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/submissions/$id': {
       id: '/admin/submissions/$id'
@@ -100,11 +190,15 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminSubmissionsIdRoute: typeof AdminSubmissionsIdRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminSubmissionsIdRoute: AdminSubmissionsIdRoute,
 }
@@ -114,6 +208,8 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
+  CastingSuccessRoute: CastingSuccessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

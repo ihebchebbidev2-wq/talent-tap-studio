@@ -16,7 +16,13 @@ export function sessionToken(req: Request) {
 export async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const token = sessionToken(req);
   if (!/^[a-f0-9]{64}$/.test(token)) { res.status(401).json({ error: 'Veuillez vous connecter.' }); return; }
-  const result = await pool.query('SELECT 1 FROM admin_sessions WHERE token_hash=$1 AND expires_at>now()', [hashToken(token)]);
+  const result = await pool.query('SELECT u.id,u.username,r.role FROM admin_sessions s JOIN admin_users u ON u.id=s.user_id JOIN admin_user_roles r ON r.user_id=u.id WHERE s.token_hash=$1 AND s.expires_at>now() AND u.active=true', [hashToken(token)]);
   if (!result.rowCount) { res.status(401).json({ error: 'Votre session a expiré.' }); return; }
+  res.locals['admin'] = result.rows[0];
+  next();
+}
+
+export function requireFullAccess(_req: Request, res: Response, next: NextFunction) {
+  if (res.locals['admin']?.role !== 'full') { res.status(403).json({ error: 'Votre compte dispose uniquement d’un accès en lecture.' }); return; }
   next();
 }

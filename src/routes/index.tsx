@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUpRight, MapPin } from 'lucide-react';
 import logo from '@/assets/mega-creative-logo.webp';
@@ -9,6 +9,7 @@ import tunisianFlag from '@/assets/flags/tn.png';
 import { CastingForm } from '@/features/casting/casting-form';
 import { translate, type Language } from '@/features/casting/localization';
 import { Button } from '@/components/ui/button';
+import { CookieControls } from '@/features/tracking/cookie-controls';
 
 export const Route = createFileRoute('/')({
   head: () => ({ meta: [
@@ -46,6 +47,6 @@ function Index() {
     </section>
     <div className="category-band">{['تصوير إعلانات', 'صناعة محتوى', 'UGC ولايف ستايل', 'مواهب جديدة'].map(label => <span key={label}>{t(label)}</span>)}</div>
     <CastingForm language={language} />
-    <footer className="site-footer"><span dir="ltr">© {new Date().getFullYear()} MEGA CREATIVE</span><span>{t('وجوه جديدة. حكايات حقيقية.')}</span><span>{t('تونس')} <ArrowUpRight /></span></footer>
+    <footer className="site-footer"><span dir="ltr">© {new Date().getFullYear()} MEGA CREATIVE</span><Link to="/privacy">{language === 'ar' ? 'سياسة الخصوصية' : 'Confidentialité'}</Link><CookieControls language={language} /><span>{t('تونس')} <ArrowUpRight /></span></footer>
   </main>;
 }
