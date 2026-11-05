@@ -11,6 +11,75 @@ const password = z.string().min(12).max(200);
 const role = z.enum(['viewer', 'full']);
 const settingsSchema = z.object({ pixel_id: z.string().trim().regex(/^$|^\d{5,25}$/), enabled: z.boolean() }).refine(v => !v.enabled || !!v.pixel_id);
 export const adminRoutes = Router();
+adminRoutes.get('/visitors', async (req, res) => {
+  const range = typeof req.query['range'] === 'string' && ['24h', '7d', '30d', 'all'].includes(req.query['range']) ? req.query['range'] : 'all';
+  const intervalClause = range === '24h' ? "created_at >= now() - interval '24 hours'" : range === '7d' ? "created_at >= now() - interval '7 days'" : range === '30d' ? "created_at >= now() - interval '30 days'" : 'true';
+  const formIntervalClause = range === '24h' ? "last_active_at >= now() - interval '24 hours'" : range === '7d' ? "last_active_at >= now() - interval '7 days'" : range === '30d' ? "last_active_at >= now() - interval '30 days'" : 'true';
+
+  const [statsResult, regionsResult, devicesResult, eventsResult, abandonedResult, recentResult] = await Promise.all([
+    pool.query(`
+      SELECT
+        COUNT(DISTINCT visitor_id)::int as total_visitors,
+        COUNT(DISTINCT session_id)::int as total_sessions,
+        COUNT(*)::int as total_events,
+        COUNT(*) FILTER (WHERE event_type = 'page_view')::int as page_views,
+        COUNT(DISTINCT session_id) FILTER (WHERE event_type = 'form_start')::int as form_starts,
+        COUNT(DISTINCT session_id) FILTER (WHERE event_type = 'form_submit')::int as form_submits,
+        COUNT(DISTINCT session_id) FILTER (WHERE event_type = 'form_abandon')::int as form_abandoned
+      FROM visitor_events
+      WHERE ${intervalClause}
+    `),
+    pool.query(`
+      SELECT COALESCE(NULLIF(region, ''), 'XX') as region, COUNT(DISTINCT visitor_id)::int as visitors, COUNT(*)::int as events
+      FROM visitor_events
+      WHERE ${intervalClause}
+      GROUP BY region
+      ORDER BY visitors DESC
+      LIMIT 10
+    `),
+    pool.query(`
+      SELECT device, COUNT(DISTINCT visitor_id)::int as visitors, COUNT(*)::int as events
+      FROM visitor_events
+      WHERE ${intervalClause}
+      GROUP BY device
+      ORDER BY visitors DESC
+    `),
+    pool.query(`
+      SELECT event_type, COUNT(*)::int as count
+      FROM visitor_events
+      WHERE ${intervalClause}
+      GROUP BY event_type
+      ORDER BY count DESC
+    `),
+    pool.query(`
+      SELECT session_id, visitor_id, region, city, device, started_at, last_active_at,
+             last_step, completed_sections, fields_filled, abandoned, metadata
+      FROM form_sessions
+      WHERE submitted = false AND ${formIntervalClause}
+      ORDER BY last_active_at DESC
+      LIMIT 50
+    `),
+    pool.query(`
+      SELECT id, visitor_id, session_id, event_type, path, region, city, device, browser, metadata, created_at
+      FROM visitor_events
+      ORDER BY created_at DESC
+      LIMIT 40
+    `)
+  ]);
+
+  const stats = statsResult.rows[0];
+  const abandonedCount = await pool.query(`SELECT COUNT(*)::int as count FROM form_sessions WHERE submitted = false AND ${formIntervalClause}`);
+  stats.form_abandoned = Math.max(stats.form_abandoned, abandonedCount.rows[0].count);
+
+  res.json({
+    stats,
+    regions: regionsResult.rows,
+    devices: devicesResult.rows,
+    eventTypes: eventsResult.rows,
+    abandonedForms: abandonedResult.rows,
+    recentEvents: recentResult.rows,
+  });
+});
 adminRoutes.use(['/users', '/settings'], requireFullAccess);
 adminRoutes.get('/users', async (_req, res) => {
   const result = await pool.query('SELECT u.id,u.username,u.active,u.created_at,r.role FROM admin_users u JOIN admin_user_roles r ON r.user_id=u.id ORDER BY u.created_at,u.id');
