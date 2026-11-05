@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { pool } from './pool';
 try {
-  for (const file of ['001_initial.sql', '002_thumbnails.sql', '003_social_links.sql', '004_admin_users_tracking.sql']) {
+  for (const file of ['001_initial.sql', '002_thumbnails.sql', '003_social_links.sql', '004_admin_users_tracking.sql', '005_visitor_tracking.sql']) {
     await pool.query(await readFile(new URL(`../../migrations/${file}`, import.meta.url), 'utf8'));
   }
   const hash = process.env['ADMIN_PASSWORD_HASH'];

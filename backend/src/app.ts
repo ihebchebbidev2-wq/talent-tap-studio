@@ -34,6 +34,7 @@ export function createApp() {
     next();
   });
   app.use(express.json({ limit: '5mb' }));
+  app.use(express.text({ type: ['text/plain', 'text/*'], limit: '1mb' }));
   const cookie = { httpOnly: true, secure: production, sameSite: 'lax' as const, path: '/api', maxAge: 8 * 60 * 60 * 1000 };
   app.get('/api/health', async (_req, res) => { await pool.query('SELECT 1'); res.json({ ok: true }); });
   app.post('/api/auth/login', rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: 'draft-8', legacyHeaders: false }), async (req, res) => {
@@ -96,11 +97,155 @@ export function createApp() {
     await pool.query('INSERT INTO advertising_consent(id,visitor_id,accepted,region,notice_version) VALUES ($1,$2,$3,$4,$5)', [id, parsed.data.visitor_id, parsed.data.accepted, parsed.data.region, parsed.data.notice_version]);
     res.status(201).json({ id });
   });
+  app.post('/api/tracking/events', rateLimit({ windowMs: 60 * 1000, limit: 200, standardHeaders: 'draft-8', legacyHeaders: false }), async (req, res) => {
+    let rawBody = req.body;
+    if (typeof rawBody === 'string') {
+      try { rawBody = JSON.parse(rawBody); } catch { res.status(400).json({ error: 'JSON invalide.' }); return; }
+    }
+    const schema = z.object({
+      visitor_id: z.string().uuid(),
+      session_id: z.string().uuid(),
+      event_type: z.string().max(50),
+      path: z.string().max(255).default('/'),
+      region: z.string().max(10).optional().default('XX'),
+      city: z.string().max(100).optional().default(''),
+      device: z.enum(['mobile', 'tablet', 'desktop']).default('desktop'),
+      browser: z.string().max(50).optional().default(''),
+      referrer: z.string().max(500).optional().default(''),
+      metadata: z.record(z.unknown()).optional().default({}),
+    });
+    const parsed = schema.safeParse(rawBody);
+    if (!parsed.success) { res.status(400).json({ error: 'Événement invalide.' }); return; }
+    const { visitor_id, session_id, event_type, path, city, device, browser, referrer, metadata } = parsed.data;
+    let region = parsed.data.region;
+    if ((!region || region === 'XX') && typeof req.headers['cf-ipcountry'] === 'string') {
+      region = req.headers['cf-ipcountry'].slice(0, 2).toUpperCase();
+    }
+    const id = randomUUID();
+    await pool.query(
+      'INSERT INTO visitor_events(id,visitor_id,session_id,event_type,path,region,city,device,browser,referrer,metadata) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+      [id, visitor_id, session_id, event_type, path, region || 'XX', city || '', device, browser || '', referrer || '', JSON.stringify(metadata)]
+    );
+
+    if (event_type === 'form_start') {
+      await pool.query(
+        `INSERT INTO form_sessions(session_id, visitor_id, region, city, device, started_at, last_active_at, last_step, metadata)
+         VALUES ($1,$2,$3,$4,$5,now(),now(),'form_start',$6)
+         ON CONFLICT (session_id) DO UPDATE SET
+           last_active_at = now(),
+           region = EXCLUDED.region,
+           device = EXCLUDED.device,
+           metadata = form_sessions.metadata || EXCLUDED.metadata`,
+        [session_id, visitor_id, region || 'XX', city || '', device, JSON.stringify(metadata)]
+      );
+    } else if (event_type === 'form_step') {
+      const stepName = typeof metadata['step_name'] === 'string' ? metadata['step_name'] : 'step';
+      const sections = typeof metadata['step'] === 'number' ? metadata['step'] : 1;
+      const fields = Array.isArray(metadata['fields_filled']) ? metadata['fields_filled'].map(String) : [];
+      await pool.query(
+        `INSERT INTO form_sessions(session_id, visitor_id, region, city, device, started_at, last_active_at, last_step, completed_sections, fields_filled, metadata)
+         VALUES ($1,$2,$3,$4,$5,now(),now(),$6,$7,$8,$9)
+         ON CONFLICT (session_id) DO UPDATE SET
+           last_active_at = now(),
+           last_step = EXCLUDED.last_step,
+           completed_sections = GREATEST(form_sessions.completed_sections, EXCLUDED.completed_sections),
+           fields_filled = EXCLUDED.fields_filled,
+           metadata = form_sessions.metadata || EXCLUDED.metadata`,
+        [session_id, visitor_id, region || 'XX', city || '', device, stepName, sections, fields, JSON.stringify(metadata)]
+      );
+    } else if (event_type === 'form_abandon') {
+      const stepName = typeof metadata['step_name'] === 'string' ? metadata['step_name'] : 'abandoned';
+      const sections = typeof metadata['step'] === 'number' ? metadata['step'] : 0;
+      const fields = Array.isArray(metadata['fields_filled']) ? metadata['fields_filled'].map(String) : [];
+      await pool.query(
+        `INSERT INTO form_sessions(session_id, visitor_id, region, city, device, started_at, last_active_at, last_step, completed_sections, fields_filled, abandoned, metadata)
+         VALUES ($1,$2,$3,$4,$5,now(),now(),$6,$7,$8,true,$9)
+         ON CONFLICT (session_id) DO UPDATE SET
+           last_active_at = now(),
+           abandoned = true,
+           metadata = form_sessions.metadata || EXCLUDED.metadata`,
+        [session_id, visitor_id, region || 'XX', city || '', device, stepName, sections, fields, JSON.stringify(metadata)]
+      );
+    } else if (event_type === 'form_submit') {
+      await pool.query('UPDATE form_sessions SET submitted = true, abandoned = false, last_active_at = now() WHERE session_id = $1', [session_id]);
+    }
+
+    res.status(201).json({ ok: true, id });
+  });
   app.use('/api/admin', requireAdmin);
   app.use('/api/admin', adminRoutes);
   app.get('/api/admin/stats', async (_req, res) => {
     const result = await pool.query("SELECT count(*)::int total, count(*) FILTER(WHERE status='new')::int new, count(*) FILTER(WHERE status='shortlisted')::int shortlisted, count(*) FILTER(WHERE created_at>=date_trunc('month',now()))::int AS \"month\" FROM applications");
     res.json(result.rows[0]);
+  });
+  app.get('/api/admin/visitors', async (req, res) => {
+    const range = typeof req.query['range'] === 'string' && ['24h', '7d', '30d', 'all'].includes(req.query['range']) ? req.query['range'] : 'all';
+    const intervalClause = range === '24h' ? "created_at >= now() - interval '24 hours'" : range === '7d' ? "created_at >= now() - interval '7 days'" : range === '30d' ? "created_at >= now() - interval '30 days'" : 'true';
+    const formIntervalClause = range === '24h' ? "last_active_at >= now() - interval '24 hours'" : range === '7d' ? "last_active_at >= now() - interval '7 days'" : range === '30d' ? "last_active_at >= now() - interval '30 days'" : 'true';
+
+    const [statsResult, regionsResult, devicesResult, eventsResult, abandonedResult, recentResult] = await Promise.all([
+      pool.query(`
+        SELECT
+          COUNT(DISTINCT visitor_id)::int as total_visitors,
+          COUNT(DISTINCT session_id)::int as total_sessions,
+          COUNT(*)::int as total_events,
+          COUNT(*) FILTER (WHERE event_type = 'page_view')::int as page_views,
+          COUNT(DISTINCT session_id) FILTER (WHERE event_type = 'form_start')::int as form_starts,
+          COUNT(DISTINCT session_id) FILTER (WHERE event_type = 'form_submit')::int as form_submits,
+          COUNT(DISTINCT session_id) FILTER (WHERE event_type = 'form_abandon')::int as form_abandoned
+        FROM visitor_events
+        WHERE ${intervalClause}
+      `),
+      pool.query(`
+        SELECT COALESCE(NULLIF(region, ''), 'XX') as region, COUNT(DISTINCT visitor_id)::int as visitors, COUNT(*)::int as events
+        FROM visitor_events
+        WHERE ${intervalClause}
+        GROUP BY region
+        ORDER BY visitors DESC
+        LIMIT 10
+      `),
+      pool.query(`
+        SELECT device, COUNT(DISTINCT visitor_id)::int as visitors, COUNT(*)::int as events
+        FROM visitor_events
+        WHERE ${intervalClause}
+        GROUP BY device
+        ORDER BY visitors DESC
+      `),
+      pool.query(`
+        SELECT event_type, COUNT(*)::int as count
+        FROM visitor_events
+        WHERE ${intervalClause}
+        GROUP BY event_type
+        ORDER BY count DESC
+      `),
+      pool.query(`
+        SELECT session_id, visitor_id, region, city, device, started_at, last_active_at,
+               last_step, completed_sections, fields_filled, abandoned, metadata
+        FROM form_sessions
+        WHERE submitted = false AND ${formIntervalClause}
+        ORDER BY last_active_at DESC
+        LIMIT 50
+      `),
+      pool.query(`
+        SELECT id, visitor_id, session_id, event_type, path, region, city, device, browser, metadata, created_at
+        FROM visitor_events
+        ORDER BY created_at DESC
+        LIMIT 40
+      `)
+    ]);
+
+    const stats = statsResult.rows[0];
+    const abandonedCount = await pool.query(`SELECT COUNT(*)::int as count FROM form_sessions WHERE submitted = false AND ${formIntervalClause}`);
+    stats.form_abandoned = Math.max(stats.form_abandoned, abandonedCount.rows[0].count);
+
+    res.json({
+      stats,
+      regions: regionsResult.rows,
+      devices: devicesResult.rows,
+      eventTypes: eventsResult.rows,
+      abandonedForms: abandonedResult.rows,
+      recentEvents: recentResult.rows,
+    });
   });
   app.get('/api/admin/applications', async (req, res) => {
     const parsed = z.object({
